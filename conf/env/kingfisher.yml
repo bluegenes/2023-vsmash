@@ -1,0 +1,8 @@
+name: kingfisher 
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - kingfisher>0.2,<3

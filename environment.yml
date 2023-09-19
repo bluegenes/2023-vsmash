@@ -1,0 +1,9 @@
+name: 2023-vsmash
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - snakemake=7.32.2
+  - pandas>2,<3
