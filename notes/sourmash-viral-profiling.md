@@ -2,7 +2,10 @@
 
 [![hackmd-github-sync-badge](https://hackmd.io/-5V2nkVyRgObc_dFkWBeyA/badge)](https://hackmd.io/-5V2nkVyRgObc_dFkWBeyA)
 
-> a preprint (below) uses sourmash through WhatThePhage and claims it performs poorly for viral classification. The workflow conducts contig-level classification using `k21,scaled100` and `sourmash search` to the phage database using `jaccard` (not `containment`)
+**Goal: Assess viral taxonomic profiling (+classification?) using `gather`--> `tax` workflow workflow on mock and real datasets**
+
+**Motivation:**
+a preprint (below) uses sourmash through WhatThePhage and claims it performs poorly for viral classification. The workflow conducts contig-level classification using `k21,scaled100` and `sourmash search` to the phage database using `jaccard` similarity.
 
 their commands:
 
@@ -23,13 +26,13 @@ their commands:
     ${signature}.temporary
     ```
 
-> Notes:
+> Refs:
 > - code context: [WtP sourmash taxonomic classification](https://github.com/replikation/What_the_Phage/blob/18b39e060edf0001a2d0dfc07748005681cc0c00/workflows/process/phage_tax_classification/sourmash_for_tax.nf#L4)
 > - [What the Phage manuscript](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9673492/) describes using sourmash 2.0.1 - is sourmash pinned to 2.x in WtP?
 
-**Goal: Assess taxonomic profiling (+classification?) using `gather`--> `tax` workflow workflow on mock and real datasets**
 
-## Benchmarking Reference
+
+## Benchmarking Preprint
  - [Benchmarking Bioinformatic Virus Identification Tools Using Real-World Metagenomic Data across Biomes](https://www.biorxiv.org/content/10.1101/2023.04.26.538077v2)
      > As most viruses remain uncultivated, metagenomics is currently the main method for virus discovery. Detecting viruses in metagenomic data is not trivial. In the past few years, many bioinformatic virus identification tools have been developed for this task, making it challenging to choose the right tools, parameters, and cutoffs. As all these tools  measure  different  biological  signals,  and  use  different  algorithms  and  training/reference  databases,  it  is imperative  to  conduct  an  independent  benchmarking  to  give  users  objective  guidance.  We  compared  the performance of ten state-of-the-art virus identification tools in thirteen modes on eight paired viral and microbial datasets from three distinct biomes, including a new complex dataset from Antarctic coastal waters. The tools had highly variable true positive rates (0 – 68%) and false positive rates (0 – 15%). PPR-Meta best distinguished viral  from  microbial  contigs,  followed  by  DeepVirFinder,  VirSorter2,  and  VIBRANT.  Different  tools  identified different subsets of the benchmarking data and **all tools, except for Sourmash, found unique viral contigs**. Tools performance could be improved with adjusted parameter cutoffs, indicating that adjustment of parameter cutoffs before usage should be considered. Together, our independent benchmarking provides guidance on choices of bioinformatic virus identification tools and gives suggestions for parameter adjustments for viromics researchers.
 
