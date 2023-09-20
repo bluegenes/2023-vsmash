@@ -2,7 +2,7 @@
 
 [![hackmd-github-sync-badge](https://hackmd.io/-5V2nkVyRgObc_dFkWBeyA/badge)](https://hackmd.io/-5V2nkVyRgObc_dFkWBeyA)
 
-**Goal: Assess viral taxonomic profiling (+classification?) using `gather`--> `tax` workflow workflow on mock and real datasets**
+**Goal: Assess viral taxonomic profiling (+classification?) using `gather`--> `tax` workflow on mock and real datasets**
 
 **Motivation:**
 a preprint (below) uses sourmash through WhatThePhage and claims it performs poorly for viral classification. The workflow conducts contig-level classification using `k21,scaled100` and `sourmash search` to the phage database using `jaccard` similarity.
