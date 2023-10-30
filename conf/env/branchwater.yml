@@ -1,0 +1,15 @@
+name: smash-branchwater
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - sourmash>=4.8.4,<5
+  - rust
+  - gcc_linux-64
+  - gxx_linux-64
+  - pip
+  - pip:
+    #- git+https://github.com/dib-lab/pyo3_branchwater@main
+    - git+https://github.com/sourmash-bio/pyo3_branchwater.git#egg=pyo3_branchwater
