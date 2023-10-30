@@ -9,6 +9,7 @@ data_dir: "/home/amhorst/2023-sourmash-viruses/test_dataset_Roux2017/raw_reads"
 
 database:
   basename: "refseq-v219"
+  fasta: "/home/amhorst/2023-sourmash-viruses/RefSeq_v219.fa"
   fromfile_csv: "inputs/refseq-v219.csv"
   taxonomy: "inputs/vmr_MSL38_v1.taxonomy.csv" # ICTV VMR taxonomy file (replace with RefSeq_v219 taxonomy file)
 

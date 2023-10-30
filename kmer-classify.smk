@@ -7,7 +7,8 @@ configfile: "inputs/roux2017.config.yml"
 basename = config['basename']
 out_dir = config['output_dir']
 db_basename = config['database']['basename'] 
-db_fasta = config['database']['fromfile_csv'] 
+db_fasta = config['database']['fasta']
+db_fromfile = config['database']['fromfile_csv']
 TAX_FILE = config['database']['taxonomy']
 samples = config['samples_csv']
 params = config['sourmash_params']
@@ -52,7 +53,8 @@ def build_param_str(moltype):
 
 rule sketch_database:
     input:
-        input_fasta = db_fasta,
+        fasta = db_fasta,
+#        fromfile = db_fromfile,
     output:
         db_zip = "sourmash-db/{db_basename}.{moltype}.zip",
     # conda: "conf/env/branchwater.yml"
@@ -63,9 +65,11 @@ rule sketch_database:
         param_str = lambda w: build_param_str(w.moltype),
     shell:
         """
-        sourmash scripts manysketch -p {params.param_str} -o {output.db_zip} \
-                                   {input.input_fasta} 2> {log}
+        sourmash sketch dna --singleton -p {params.param_str} -o {output.db_zip} \
+                             {input.fasta} 2> {log}
         """
+        #sourmash scripts manysketch -p {params.param_str} -o {output.db_zip} \
+        #                           {input.fasta} 2> {log}
 
 rule index_database:
     input:
