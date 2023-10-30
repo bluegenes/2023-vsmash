@@ -1,25 +1,23 @@
 import pandas as pd
 import csv
 
-out_dir = "output.roux-2017"
+# load from configfile
+configfile: "inputs/roux2017.config.yml"
+
+basename = config['basename']
+out_dir = config['output_dir']
+db_basename = config['database']['basename'] 
+db_fasta = config['database']['fromfile_csv'] 
+TAX_FILE = config['database']['taxonomy']
+samples = config['samples_csv']
+params = config['sourmash_params']
+
 logs_dir = f'{out_dir}/logs'
-basename="roux-2017"
-db_basename = "RefSeq_v219"
-db_fasta = '/home/amhorst/2023-sourmash-viruses/RefSeq_v219.fa'
-
-samples = 'inputs/roux-2017.samples.csv'
-data_dir = '/home/amhorst/2023-sourmash-viruses/test_dataset_Roux2017/raw_reads'
-
-params = {"dna": {"ksize": [7,9,11,13,15,17,19,21,23,25,27,29,31], "scaled": 1, "threshold_bp": 0},
-          "protein": {"ksize": [5, 7], "scaled": 1, "threshold_bp": 0}} #, 6,10
-
-TAX_FILE = 'inputs/vmr_MSL38_v1.taxonomy.csv' # ICTV VMR taxonomy file (replace with RefSeq_v219 taxonomy file)
 
 onstart:
     print("------------------------------")
     print("sourmash taxonomic classification workflow")
     print("------------------------------")
-
 
 onsuccess:
     print("\n--- Workflow executed successfully! ---\n")
@@ -31,12 +29,10 @@ onerror:
 dna_params = expand(f"{basename}-x-{db_basename}.dna.k{{k}}-sc{{scaled}}.t{{thresh}}", k=params['dna']['ksize'], 
                                                                                        scaled=params['dna']['scaled'],
                                                                                        thresh=params['dna']['threshold_bp'])
-prot_params = expand(f"{basename}-x-{db_basename}.protein.k{{k}}-sc{{scaled}}.t{{thresh}}", k=params['protein']['ksize'], 
-                                                                                            scaled=params['protein']['scaled'],
-                                                                                            thresh=params['protein']['threshold_bp'])
-# all_params = prot_params
+#prot_params = expand(f"{basename}-x-{db_basename}.protein.k{{k}}-sc{{scaled}}.t{{thresh}}", k=params['protein']['ksize'], 
+                                                                      #                      scaled=params['protein']['scaled'],
+                                                                      #                      thresh=params['protein']['threshold_bp'])
 all_params = dna_params #+ prot_params
-
 
 rule all:
     input:
@@ -44,31 +40,43 @@ rule all:
         # expand(f"{out_dir}/fastmultigather/{{search_params}}.gather.with-lineages.csv", search_params = all_params), 
 
 
+def build_param_str(moltype):
+    if moltype not in ['dna', 'protein']:
+        raise ValueError(f"moltype {moltype} not recognized")
+    ksizes = params[moltype]['ksize']
+    scaled = min(params[moltype]['scaled'])
+    k_params = ",".join([f"k={k}" for k in ksizes])
+    param_str = f"{moltype},{k_params},scaled={scaled},abund"
+    return param_str
+
+
 rule sketch_database:
     input:
         input_fasta = db_fasta,
     output:
-        db_zip = "refseq-dbs/{db_basename}.{moltype}.zip",
+        db_zip = "sourmash-db/{db_basename}.{moltype}.zip",
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
     log: f"{logs_dir}/sketch/{{db_basename}}.{{moltype}}.sketch.log"
+    threads: 1 # if single file, manysketch doesn't actually parallelize
     params:
+        param_str = lambda w: build_param_str(w.moltype),
     shell:
         """
-        sourmash scripts manysketch -p {param_str} -o {output.db_zip} \
+        sourmash scripts manysketch -p {params.param_str} -o {output.db_zip} \
                                    {input.input_fasta} 2> {log}
         """
 
 rule index_database:
     input:
-        db_zip = "refseq-dbs/{db_basename}.{moltype}.zip"
+        db_zip = "sourmash-db/{db_basename}.{moltype}.zip"
     output:
-        current_file = "refseq-dbs/{db_basename}.{moltype}-k{ksize}.rocksdb/CURRENT",
+        current_file = "sourmash-db/{db_basename}.{moltype}-k{ksize}.rocksdb/CURRENT",
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
     log: f"{logs_dir}/index/{{db_basename}}.{{moltype}}-k{{ksize}}.index.log"
     params:
-        db_rocksdb = "refseq-dbs/{db_basename}.{moltype}-k{ksize}.rocksdb",
+        db_rocksdb = "sourmash-db/{db_basename}.{moltype}-k{ksize}.rocksdb",
     threads: 1
     shell:
         """
@@ -83,6 +91,7 @@ rule sketch_samples:
         f"{out_dir}/{{basename}}.{{moltype}}.zip",
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
+    threads: 1,
     log: f"{logs_dir}/sketch/{{basename}}.{{moltype}}.sketch.log"
     shell:
         """
@@ -93,7 +102,7 @@ rule sketch_samples:
 rule sourmash_fastmultigather:
     input:
         query_zip = f"{out_dir}/{{basename}}.{{moltype}}.zip",
-        database  = "refseq-dbs/{db_basename}.{moltype}-k{ksize}.rocksdb/CURRENT",
+        database  = "sourmash-db/{db_basename}.{moltype}-k{ksize}.rocksdb/CURRENT",
     output:
         f"{out_dir}/fastmultigather/{{basename}}-x-{{db_basename}}.{{moltype}}.k{{ksize}}-sc{{scaled}}.t{{threshold}}.gather.csv",
     resources:

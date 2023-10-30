@@ -1,0 +1,24 @@
+
+
+output_dir: "output.roux2017"
+basename: "roux2017"
+
+
+samples_csv: "inputs/roux2017.samples.csv"
+data_dir: "/home/amhorst/2023-sourmash-viruses/test_dataset_Roux2017/raw_reads"
+
+database:
+  basename: "refseq-v219"
+  fromfile_csv: "inputs/refseq-v219.csv"
+  taxonomy: "inputs/vmr_MSL38_v1.taxonomy.csv" # ICTV VMR taxonomy file (replace with RefSeq_v219 taxonomy file)
+
+sourmash_params:
+  dna:
+    ksize: [7,9,11,13,15,17,19,21,23,25,27,29,31] # 15,21
+    scaled: [1,10,50,100]
+    threshold_bp: 0
+  protein:
+    ksize: [7,10]
+    scaled: [10,100]
+    threshold_bp: 0
+
