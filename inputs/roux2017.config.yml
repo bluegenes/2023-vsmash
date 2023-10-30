@@ -15,8 +15,8 @@ database:
 
 sourmash_params:
   dna:
-    ksize: [7,9,11,13,15,17,19,21,23,25,27,29,31] # 15,21
-    scaled: [1,10,50,100]
+    ksize: [21] #[7,9,11,13,15,17,19,21,23,25,27,29,31] # 15,21
+    scaled: [10,50,100] # 1
     threshold_bp: 0
   protein:
     ksize: [7,10]

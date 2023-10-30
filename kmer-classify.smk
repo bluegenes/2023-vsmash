@@ -60,6 +60,7 @@ rule sketch_database:
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
     log: f"{logs_dir}/sketch/{{db_basename}}.{{moltype}}.sketch.log"
+    benchmark: f"{logs_dir}/sketch/{{db_basename}}.{{moltype}}.sketch.benchmark"
     threads: 1 # if single file, manysketch doesn't actually parallelize
     params:
         param_str = lambda w: build_param_str(w.moltype),
@@ -73,19 +74,22 @@ rule sketch_database:
 
 rule index_database:
     input:
-        db_zip = "sourmash-db/{db_basename}.{moltype}.zip"
+        db_zip = ancient("sourmash-db/{db_basename}.{moltype}.zip"),
     output:
-        current_file = "sourmash-db/{db_basename}.{moltype}-k{ksize}.rocksdb/CURRENT",
+        current_file = "sourmash-db/{db_basename}.{moltype}.k{ksize}-sc{scaled}.rocksdb/CURRENT",
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
-    log: f"{logs_dir}/index/{{db_basename}}.{{moltype}}-k{{ksize}}.index.log"
+    log: f"{logs_dir}/index/{{db_basename}}.{{moltype}}.k{{ksize}}-sc{{scaled}}.index.log"
+    benchmark: f"{logs_dir}/index/{{db_basename}}.{{moltype}}.k{{ksize}}-sc{{scaled}}.index.benchmark"
     params:
-        db_rocksdb = "sourmash-db/{db_basename}.{moltype}-k{ksize}.rocksdb",
+        db_rocksdb = "sourmash-db/{db_basename}.{moltype}.k{ksize}-sc{scaled}.rocksdb",
+        moltype = lambda w: w.moltype.upper() if w.moltype == 'dna' else w.moltype,
     threads: 1
     shell:
         """
-        sourmash scripts index {input.db_zip} -m {wildcards.moltype} \
-                               -k {wildcards.ksize} --scaled 1 -o {params.db_rocksdb} 2> {log}
+        sourmash scripts index {input.db_zip} -m {params.moltype} \
+                               -k {wildcards.ksize} --scaled {wildcards.scaled} \
+                               -o {params.db_rocksdb} 2> {log}
         """
 
 rule sketch_samples:
@@ -95,17 +99,20 @@ rule sketch_samples:
         f"{out_dir}/{{basename}}.{{moltype}}.zip",
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
-    threads: 1,
+    threads: 14, # one per sample
     log: f"{logs_dir}/sketch/{{basename}}.{{moltype}}.sketch.log"
+    benchmark: f"{logs_dir}/sketch/{{basename}}.{{moltype}}.sketch.benchmark"
+    params:
+        param_str = lambda w: build_param_str(w.moltype),
     shell:
         """
-        sourmash scripts manysketch -p {threads} -o {output} \
-                                    {input.sample_csv} 2> {log}
+        sourmash scripts manysketch -p {params.param_str} -o {output} \
+                                    {input.sample_csv} -c {threads} 2> {log}
         """
 
 rule sourmash_fastmultigather:
     input:
-        query_zip = f"{out_dir}/{{basename}}.{{moltype}}.zip",
+        query_zip = ancient(f"{out_dir}/{{basename}}.{{moltype}}.zip"),
         database  = "sourmash-db/{db_basename}.{moltype}-k{ksize}.rocksdb/CURRENT",
     output:
         f"{out_dir}/fastmultigather/{{basename}}-x-{{db_basename}}.{{moltype}}.k{{ksize}}-sc{{scaled}}.t{{threshold}}.gather.csv",
@@ -119,14 +126,15 @@ rule sourmash_fastmultigather:
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
     params:
-        db_dir = lambda w: f'output.vmr/{w.db_basename}.{w.moltype}-k{w.ksize}.rocksdb',
+        db_dir = lambda w: f'sourmash-db/{w.db_basename}.{w.moltype}-k{w.ksize}.rocksdb',
+        moltype = lambda w: w.moltype.upper() if w.moltype == 'dna' else w.moltype,
     shell:
         """
         echo "DB: {params.db_dir}"
         echo "DB: {params.db_dir}" > {log}
 
         sourmash scripts fastmultigather --threshold {wildcards.threshold} \
-                          --moltype {wildcards.moltype} --ksize {wildcards.ksize} \
+                          --moltype {params.moltype} --ksize {wildcards.ksize} \
                           --scaled {wildcards.scaled} {input.query_zip} \
                           {params.db_dir} -o {output} 2>> {log}
         """
@@ -147,6 +155,7 @@ rule tax_annotate:
     # conda: "conf/env/branchwater.yml"
     conda: "pyo3-branch",
     log: f"{logs_dir}/annotate/{{basename}}-x-{{db_basename}}.{{moltype}}.k{{ksize}}-sc{{scaled}}.t{{threshold}}.log"
+    benchmark: f"{logs_dir}/annotate/{{basename}}-x-{{db_basename}}.{{moltype}}.k{{ksize}}-sc{{scaled}}.t{{threshold}}.benchmark"
     params:
         output_dir = f"{out_dir}/fastmultigather",
     shell:
