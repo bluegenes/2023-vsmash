@@ -30,7 +30,8 @@ def main(args):
         info.extend(get_accessions_from_fasta(fasta))
     n_acc = len(info)
     print(f"Found {n_acc} accessions")
-
+    # number of seconds to sleep for between requests
+    sleep_seconds = 15
     # open output file and use csvwriter
     with open(args.output, 'w') as out:
         taxranks = ['superkingdom', 'kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'clade']
@@ -47,13 +48,13 @@ def main(args):
             record = SeqIO.read(genbank_record, "genbank")
             # to get taxid, search with organism name (bc scientific name not always properly populated)
             organism = record.annotations['organism'] 
-            time.sleep(15)  # Sleep for 2 seconds
+            time.sleep(sleep_seconds)  # Sleep to avoid too many requests
             handle = Entrez.esearch(db="taxonomy", term=organism)
             record = Entrez.read(handle)
             taxid = record['IdList'][0]
 
             # Add a delay before fetching taxonomy information
-            time.sleep(15)  # Sleep for 2 seconds
+            time.sleep(sleep_seconds)  # Sleep to avoid too many requests
 
             # Use taxid to fetch the taxonomic information with ranks
             try:
