@@ -72,6 +72,7 @@ rule download_by_accession:
         fileinfo=protected(os.path.join(out_dir, "fileinfo/{acc}.fileinfo.csv")),
     params:
         prot=protected(os.path.join(out_dir, "protein/{acc}.faa.gz")),
+        prot_out_dir=os.path.join(out_dir, 'protein') 
     conda: "conf/env/biopython.yml"
     log: os.path.join(logs_dir, "downloads", "{acc}.log")
     benchmark: os.path.join(logs_dir, "downloads", "{acc}.benchmark")
@@ -83,6 +84,7 @@ rule download_by_accession:
         partition="low2",
     shell:
         """
+        mkdir -p {params.prot_out_dir} # since protein output is in params, need to manually make sure this dir is created
         python genbank_nuccore.py {wildcards.acc} --nucleotide {output.nucl} --protein {params.prot} --fileinfo {output.fileinfo} 2> {log}
         """
 
@@ -175,40 +177,3 @@ def build_param_str(moltype):
     k_params = ",".join([f"k={k}" for k in ksizes])
     param_str = f"{moltype},{k_params},scaled={scaled},abund"
     return param_str
-
-
-# Snakemake rule to run all steps
-# rule all:
-#     input:
-#         "sketches"
-#     shell:
-#         "snakemake download_genomes create_sourmash_csv sketch_genomes"
-# # Snakemake rule to download genomes
-# rule download_genomes:
-#     output:
-#         "genomes/{genome}.fasta"
-#     params:
-#         genome_file = "List_phages_RefSeq_69.txt"
-#     shell:
-#         "wget -O genomes/{wildcards.genome}.fasta {params.genome_file} && "
-#         "echo 'Downloaded {wildcards.genome}.fasta'"
-
-# # Snakemake rule to create sourmash CSV file
-# rule create_sourmash_csv:
-#     input:
-#         expand("genomes/{genome}.fasta", genome=genomes)
-#     output:
-#         "sourmash_genomes.csv"
-#     shell:
-#         "sourmash from-file -k 31 -o {output} {input} && "
-#         "echo 'Created sourmash_genomes.csv'"
-
-# # Snakemake rule to sketch genomes with sourmash
-# rule sketch_genomes:
-#     input:
-#         "sourmash_genomes.csv"
-#     output:
-#         directory("sketches")
-#     shell:
-#         "sourmash sketch -p {threads} -o {output} {input} && "
-#         "echo 'Sketched genomes'"
