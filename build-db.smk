@@ -1,5 +1,6 @@
 import re
 import os
+import pandas as pd
 
 refseq69_roux = 'List_phages_RefSeq_69.txt'
 out_dir = 'output.refseq69'
@@ -28,17 +29,17 @@ with open(refseq69_roux, 'r') as inF:
         else:
             print(f'No match found in line: {line}')
 
-print(len(ACCESSIONS))
 # write sourmash fromfile from these accessions
 # name,genome_filename,protein_filename
-with open('output.refseq-69.csv', 'w') as outF:
-    outF.write('name,genome_filename,protein_filename\n')
-    for id, name in ACCESSIONS.items():
-        outF.write(f"{name},genomes/{id}.fasta,\n")
+# with open('output.refseq-69.csv', 'w') as outF:
+#     outF.write('name,genome_filename,protein_filename\n')
+#     for id, name in ACCESSIONS.items():
+#         outF.write(f"{name},genomes/{id}.fasta,\n")
 
 rule all:
     input:
-        expand(f"{out_dir}/{{db_basename}}.{{moltype}}.zip", db_basename=basename, moltype=['dna', 'protein'])
+        expand(f"{out_dir}/{{db_basename}}.{{moltype}}.zip", db_basename=basename, moltype=['dna', 'protein']),
+        expand(f"{out_dir}/{{db_basename}}.{{moltype}}.sc{{scaled}}.zip", db_basename=basename, moltype=['dna', 'protein'], scaled=[2, 10, 50, 100, 1000]),
 
 class Checkpoint_MakePattern:
     def __init__(self, pattern):
@@ -134,7 +135,7 @@ rule sketch_fromfile:
     output: os.path.join(out_dir, "{basename}.{moltype}.zip")
     params:
         lambda w: paramD[w.moltype]
-    threads: 1
+    threads: 10
     resources:
         mem_mb=3000,
         runtime=60,
@@ -147,33 +148,19 @@ rule sketch_fromfile:
     shell:
         """
         sourmash scripts manysketch {input.fromfile} -p {params} \
-                                    -o {output} 2> {log}
+                                    -o {output} -c {threads} 2> {log}
         """
 
-rule make_genome_info_csv:
-    output:
-        csvfile = 'genbank/info/{acc}.info.csv'
+
+rule downsample_zip:
+    input: os.path.join(out_dir, "{basename}.{moltype}.zip")
+    output: os.path.join(out_dir, "{basename}.{moltype}.sc{scaled}.zip")
     threads: 1
-    resources:
-        mem_mb=3000,
-        disk_mb=5000,
-        runtime=90,
-        time=60,
-        partition="low2",
-    conda: "conf/env/biopython.yml"
+    conda: "conf/env/sourmash.yml"
+    log: os.path.join(logs_dir, "downsample", "{basename}.{moltype}.sc{scaled}.log")
+    benchmark: os.path.join(logs_dir, "downsample", "{basename}.{moltype}.sc{scaled}.benchmark")
     shell:
         """
-        python -Werror genbank_genomes.py {wildcards.acc} \
-            --output {output.csvfile}
+        sourmash downsample {input} -s {wildcards.scaled} -o {output} 2> {log}
         """
 
-
-
-def build_param_str(moltype):
-    if moltype not in ['dna', 'protein']:
-        raise ValueError(f"moltype {moltype} not recognized")
-    ksizes = params[moltype]['ksize']
-    scaled = min(params[moltype]['scaled'])
-    k_params = ",".join([f"k={k}" for k in ksizes])
-    param_str = f"{moltype},{k_params},scaled={scaled},abund"
-    return param_str

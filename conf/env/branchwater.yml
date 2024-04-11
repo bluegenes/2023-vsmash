@@ -9,7 +9,8 @@ dependencies:
   - rust
   - gcc_linux-64
   - gxx_linux-64
-  - pip
+  - sourmash_plugin_branchwater=0.9.3
+  #- pip
   - pip:
     #- git+https://github.com/dib-lab/pyo3_branchwater@main
-    - git+https://github.com/sourmash-bio/pyo3_branchwater.git#egg=pyo3_branchwater
+   # - git+https://github.com/sourmash-bio/pyo3_branchwater.git#egg=pyo3_branchwater
