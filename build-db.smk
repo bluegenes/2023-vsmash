@@ -128,7 +128,7 @@ rule aggregate_fileinfo_to_taxonomy:
         csv = protected(os.path.join(out_dir, "{basename}.taxonomy.csv"))
     run:
         with open(str(output.csv), "w") as outF:
-            header = 'name,superkingdom,phylum,class,order,family,genus,species'
+            header = 'ident,superkingdom,phylum,class,order,family,genus,species,name'
             outF.write(header + '\n')
             for inp in input:
                 with open(str(inp)) as inF:
@@ -137,7 +137,7 @@ rule aggregate_fileinfo_to_taxonomy:
                     while len(tax.split(',')) < 7:
                         tax += ','
                     this_acc = name.split(' ')[0]
-                    outF.write(f"{name},{tax}\n")
+                    outF.write(f"{this_acc},{tax},{name}\n")
 
 
 # Define the checkpoint function that allows us to read the fromfile.csv
