@@ -24,22 +24,16 @@ with open(refseq69_roux, 'r') as inF:
             # Extract the matched identifier
             ident = match.group(1)
             # extract name
-            name = match.group(2)
+            name = match.group(2).replace(',', ';')
             ACCESSIONS[ident] = ident + ' ' + name
         else:
             print(f'No match found in line: {line}')
 
-# write sourmash fromfile from these accessions
-# name,genome_filename,protein_filename
-# with open('output.refseq-69.csv', 'w') as outF:
-#     outF.write('name,genome_filename,protein_filename\n')
-#     for id, name in ACCESSIONS.items():
-#         outF.write(f"{name},genomes/{id}.fasta,\n")
-
 rule all:
     input:
+        os.path.join(out_dir, f"{basename}.taxonomy.csv"),
         expand(f"{out_dir}/{{db_basename}}.{{moltype}}.zip", db_basename=basename, moltype=['dna', 'protein']),
-        expand(f"{out_dir}/{{db_basename}}.{{moltype}}.sc{{scaled}}.zip", db_basename=basename, moltype=['dna', 'protein'], scaled=[2, 10, 50, 100, 1000]),
+        expand(f"{out_dir}/{{db_basename}}.{{moltype}}-sc{{scaled}}.zip", db_basename=basename, moltype=['dna', 'protein'], scaled=[2, 10, 50, 100, 1000]),
 
 class Checkpoint_MakePattern:
     def __init__(self, pattern):
@@ -116,11 +110,35 @@ rule aggregate_fileinfo_to_fromfile:
                 with open(str(inp)) as inF:
                     # outF.write(inF.read())
                     # if protein_filename doesn't exist, use translated
-                    name,dna,prot = inF.read().split(',')
+                    line = inF.read().split(',')
+                    if len(line) != 4:
+                        import pdb; pdb.set_trace()
+                    # name,dna,prot,_tax = inF.read().split(',')
+                    name,dna,prot,_tax = line
                     this_acc = name.split(' ')[0]
                     if this_acc not in prot:
-                        prot = f"{out_dir}/translate/{this_acc}.faa.gz\n"
-                    outF.write(f"{name},{dna},{prot}")
+                        prot = f"{out_dir}/translate/{this_acc}.faa.gz"
+                    outF.write(f"{name},{dna},{prot}\n")
+
+
+rule aggregate_fileinfo_to_taxonomy:
+    input: 
+        fileinfo=expand(os.path.join(out_dir, "fileinfo/{acc}.fileinfo.csv"), acc=ACCESSIONS)
+    output:
+        csv = protected(os.path.join(out_dir, "{basename}.taxonomy.csv"))
+    run:
+        with open(str(output.csv), "w") as outF:
+            header = 'name,superkingdom,phylum,class,order,family,genus,species'
+            outF.write(header + '\n')
+            for inp in input:
+                with open(str(inp)) as inF:
+                    name,_dna,_prot,tax = inF.read().split(',')
+                    tax = tax.replace(' ', '').replace(';', ',').strip() # remove spaces and replace ';' with ',', strip '\n'
+                    while len(tax.split(',')) < 7:
+                        tax += ','
+                    this_acc = name.split(' ')[0]
+                    outF.write(f"{name},{tax}\n")
+
 
 # Define the checkpoint function that allows us to read the fromfile.csv
 checkpoint check_fromfile:
@@ -145,6 +163,8 @@ rule sketch_fromfile:
     conda: "conf/env/branchwater.yml"
     log:  os.path.join(logs_dir, "sketch", "{basename}.{moltype}.log")
     benchmark:  os.path.join(logs_dir, "sketch", "{basename}.{moltype}.benchmark")
+    wildcard_constraints:
+        moltype="dna|protein",
     shell:
         """
         sourmash scripts manysketch {input.fromfile} -p {params} \
@@ -154,13 +174,14 @@ rule sketch_fromfile:
 
 rule downsample_zip:
     input: os.path.join(out_dir, "{basename}.{moltype}.zip")
-    output: os.path.join(out_dir, "{basename}.{moltype}.sc{scaled}.zip")
+    output: os.path.join(out_dir, "{basename}.{moltype}-sc{scaled}.zip")
     threads: 1
-    conda: "conf/env/sourmash.yml"
+    conda: "conf/env/branchwater.yml"
     log: os.path.join(logs_dir, "downsample", "{basename}.{moltype}.sc{scaled}.log")
     benchmark: os.path.join(logs_dir, "downsample", "{basename}.{moltype}.sc{scaled}.benchmark")
+    params:
+        alpha_cmd=lambda w: f"--{w.moltype}" if w.moltype == "protein" else "",
     shell:
         """
-        sourmash downsample {input} -s {wildcards.scaled} -o {output} 2> {log}
+        sourmash sig downsample {input} --scaled {wildcards.scaled} {params.alpha_cmd} -o {output} 2> {log}
         """
-

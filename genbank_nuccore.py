@@ -33,6 +33,9 @@ def main(args):
     # Use SeqIO to parse the record and extract the organism name and sequences
     record = SeqIO.read(handle, "genbank")
     organism_name = record.annotations["organism"]
+    taxonomy = ";".join(record.annotations["taxonomy"])  # Joining the taxonomy list into a single string
+    taxonomy = taxonomy.replace(",", "__")  # Replace commas with '__' to avoid confusion with CSV format
+
     # nucl
     nucleotide_sequence=None
     try:
@@ -80,12 +83,11 @@ def main(args):
     with open(fileinfo_file, "w", newline='') as csvfile:
         writer = csv.writer(csvfile)
         if protein_exists and nucleotide_sequence is not None:
-            writer.writerow([name, nucleotide_file, protein_file])
+            writer.writerow([name, nucleotide_file, protein_file, taxonomy])
         elif nucleotide_sequence is not None:
-            writer.writerow([name, nucleotide_file,""])
+            writer.writerow([name, nucleotide_file,"", taxonomy])
         else:
             writer.writerow([name, "" ,""])
-
 
 
 def cmdline(sys_args):
